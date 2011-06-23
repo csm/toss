@@ -10,6 +10,7 @@
 		707050A113B2A7A40067C05A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 707050A013B2A7A40067C05A /* CoreFoundation.framework */; };
 		707050A413B2A7A40067C05A /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 707050A313B2A7A40067C05A /* main.c */; };
 		707050A613B2A7A40067C05A /* toss.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 707050A513B2A7A40067C05A /* toss.1 */; };
+		707050AE13B3D2050067C05A /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 707050AD13B3D2050067C05A /* CoreServices.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -30,6 +31,7 @@
 		707050A013B2A7A40067C05A /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		707050A313B2A7A40067C05A /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		707050A513B2A7A40067C05A /* toss.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = toss.1; sourceTree = "<group>"; };
+		707050AD13B3D2050067C05A /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,6 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				707050AE13B3D2050067C05A /* CoreServices.framework in Frameworks */,
 				707050A113B2A7A40067C05A /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -64,6 +67,7 @@
 		7070509F13B2A7A30067C05A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				707050AD13B3D2050067C05A /* CoreServices.framework */,
 				707050A013B2A7A40067C05A /* CoreFoundation.framework */,
 			);
 			name = Frameworks;
@@ -85,6 +89,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 707050A913B2A7A40067C05A /* Build configuration list for PBXNativeTarget "toss" */;
 			buildPhases = (
+				707050AC13B3CB7A0067C05A /* ShellScript */,
 				7070509813B2A7A30067C05A /* Sources */,
 				7070509913B2A7A30067C05A /* Frameworks */,
 				7070509A13B2A7A30067C05A /* CopyFiles */,
@@ -122,6 +127,23 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		707050AC13B3CB7A0067C05A /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/commit.inc",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\nCOMMIT=`git log -1 | head -1`\necho \"#define TOSS_VERSION \\\"dev (git $COMMIT)\\\"\" > ${DERIVED_FILE_DIR}/commit.inc";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7070509813B2A7A30067C05A /* Sources */ = {
