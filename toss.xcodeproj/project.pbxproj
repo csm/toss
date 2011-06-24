@@ -32,6 +32,7 @@
 		707050A313B2A7A40067C05A /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		707050A513B2A7A40067C05A /* toss.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = toss.1; sourceTree = "<group>"; };
 		707050AD13B3D2050067C05A /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
+		707050B013B41CA50067C05A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,6 +51,7 @@
 		7070509113B2A7A30067C05A = {
 			isa = PBXGroup;
 			children = (
+				707050B013B41CA50067C05A /* README.md */,
 				707050A213B2A7A40067C05A /* toss */,
 				7070509F13B2A7A30067C05A /* Frameworks */,
 				7070509D13B2A7A30067C05A /* Products */,

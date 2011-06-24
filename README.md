@@ -20,9 +20,9 @@ It is not complete yet. You shouldn't use it or replace `/bin/rm` with it quite 
                                 that of the corresponding command line argument
           --no-preserve-root    do not treat `/' specially
           --preserve-root       do not remove `/' (default)
-      -r, -R, --recursive      remove directories and their contents recursively
-                               (implies -d)
-      -u, --unlink             unlink files instead of moving them to the trash
-      -v, --verbose            explain what is being done
-      -h, --help               show this help and exit
-          --version            show version info and exit
+      -r, -R, --recursive       remove directories and their contents recursively
+                                (implies -d)
+      -u, --unlink              unlink files instead of moving them to the trash
+      -v, --verbose             explain what is being done
+      -h, --help                show this help and exit
+          --version             show version info and exit
