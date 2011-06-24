@@ -30,6 +30,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <fts.h>
+#include <sys/stat.h>
 
 #if DEBUG
 #include "commit.inc"
@@ -46,9 +48,10 @@ struct config
     bool recursive;
     bool no_preserve_root;
     bool one_file_system;
+    bool unlink;
 };
 
-static struct config config = { false, false, false, INTERACTIVE_OFF, false, false, false };
+static struct config config = { false, false, false, INTERACTIVE_OFF, false, false, false, false };
 
 static void opterror(const char *progname, const char *fmt, ...)
 {
@@ -83,6 +86,7 @@ static void showhelp(const char *progname)
     printf("     --preserve-root       do not remove `/' (default)\n");
     printf("  -r, -R, --recursive      remove directories and their contents recursively\n");
     printf("                           (implies -d)\n");
+    printf("  -u, --unlink             unlink files instead of moving them to the trash\n");
     printf("  -v, --verbose            explain what is being done\n");
     printf("  -h, --help               show this help and exit\n");
     printf("      --version            show version info and exit\n");
@@ -117,10 +121,12 @@ static bool prompt(const char *progname, const char *fmt, ...)
 #define OPT_NO_PRESERVE_ROOT 1026
 #define OPT_VERSION          1027
 
+int trash(const char *, const char * const);
+
 int main (int argc, char * const *argv)
 {
     const char *progname = "toss";
-    const char *optstring = "dfhiIPRrvVW";
+    const char *optstring = "dfhiIPRruvW";
     const struct option longopts[] = {
         { "directories", no_argument, NULL, 'd' },
         { "force", no_argument, NULL, 'f' },
@@ -132,6 +138,7 @@ int main (int argc, char * const *argv)
         { "one-file-system", no_argument, NULL, OPT_ONE_FILE_SYSTEM },
         { "no-preserve-root", no_argument, NULL, OPT_NO_PRESERVE_ROOT },
         { "preserve-root", no_argument, NULL, OPT_PRESERVE_ROOT },
+        { "unlink", no_argument, NULL, 'u' },
         { NULL, 0, NULL, 0 }
     };
     
@@ -170,6 +177,7 @@ int main (int argc, char * const *argv)
                 
             case 'v':
                 config.verbose = true;
+                break;
                 
             case 'h':
                 showhelp(progname);
@@ -191,6 +199,17 @@ int main (int argc, char * const *argv)
                 config.one_file_system = true;
                 break;
                 
+            case 'u':
+                config.unlink = true;
+                break;	
+                
+            case 'P':
+                fprintf(stderr, "%s: option -P ignored for compatibility\n", progname);
+                break;
+                
+            case 'W':
+                opterror(progname, "option -W not supported\n");
+                
             case '?':
                 opterror(progname, NULL);
                 
@@ -210,56 +229,181 @@ int main (int argc, char * const *argv)
         {
             exit(EXIT_SUCCESS);
         }
+        config.interactive = INTERACTIVE_OFF;
     }
 
+    int exitcode = EXIT_SUCCESS;
     for (int i = optind; i < argc; i++)
     {
-        FSRef fsref;
-        Boolean isDir;
-        OSStatus err = FSPathMakeRef((const UInt8 *) argv[i], &fsref, &isDir);
-        if (err == fnfErr && !config.force)
+        if (trash(progname, argv[i]) != 0)
+            exitcode = EXIT_FAILURE;
+    }
+    
+    exit(exitcode);
+}
+
+int trash(const char *progname, const char * const path)
+{
+    FSRef fsref;
+    Boolean isDir;
+    OSStatus err = FSPathMakeRef((const UInt8 *) path, &fsref, &isDir);
+    if (err == fnfErr && !config.force)
+    {
+        fprintf(stderr, "%s: %s: no such file or directory\n", progname, path);
+        return -1;
+    }
+    
+    if (isDir)
+    {
+        if (!config.recursive && !config.directories)
         {
-            fprintf(stderr, "%s: %s: no such file or directory\n", progname, argv[i]);
-            continue;
+            fprintf(stderr, "%s: %s: is a directory\n", progname, path);
+            return -1;
         }
         
-        if (isDir)
+        char * const path_argv[] = { path, NULL };
+        int options = FTS_PHYSICAL;
+        if (config.one_file_system)
+            options |= FTS_XDEV;
+        FTS *fts = fts_open(path_argv, FTS_PHYSICAL, NULL);
+        assert(fts != NULL);
+        FTSENT *ent = NULL;
+        
+        if (config.interactive == INTERACTIVE_ONCE)
         {
-            
-        }
-        else
-        {
-            bool move = true;
-            if (config.interactive == INTERACTIVE_ALL)
+            if (!prompt(progname, "%s directory %s (and all other arguments)? ",
+                        (config.unlink ? "remove" : "trash"), path))
             {
-                move = prompt(progname, "remove regular file %s?", argv[i]);
+                return 0;
             }
-            
-            if (move)
+            config.interactive = INTERACTIVE_OFF;
+        }
+
+        if (config.recursive)
+        {
+            int result = 0;
+            while ((ent = fts_read(fts)) != NULL)
             {
-                err = FSMoveObjectToTrashSync(&fsref, NULL, 0);
-                if (err == noErr)
+                struct stat *statp = ent->fts_statp;
+                if (S_ISDIR(statp->st_mode))
                 {
-                    if (config.verbose)
-                        printf("%s\n", argv[i]);
+                    ent = fts_children(fts, 0);
+                    if (ent == NULL)
+                    {
+                        if (prompt(progname, "%s directory %s? ",
+                                   (config.unlink ? "remove" : "trash"), path))
+                        {
+                            if (config.unlink)
+                                err = FSDeleteObject(&fsref);
+                            else
+                                err = FSMoveObjectToTrashSync(&fsref, NULL, 0);
+                        }
+                        
+                        if (err == noErr)
+                        {
+                            if (config.verbose)
+                                printf("%s %s\n", (config.unlink ? "removed" : "trashed"), path);
+                        }
+                        else
+                        {
+                            switch (err)
+                            {
+                                case permErr:
+                                    fprintf(stderr, "%s: cannot move %s: permission denied\n", progname, path);
+                                    break;
+                                    
+                                default:
+                                    fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                                    break;
+                            }
+                        }
+                    }
+                    // else, directory not empty, don't remove it.
                 }
                 else
                 {
-                    switch (err)
-                    {
-                        case permErr:
-                            fprintf(stderr, "%s: cannot move %s: permission denied\n", progname, argv[i]);
-                            break;
-                            
-                        default:
-                            fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, argv[i], err);
-                            break;
-                    }
+                    if (trash(progname, ent->fts_path) != 0)
+                        result = -1;
+                }
+            }
+            fts_close(fts);
+            return result;
+        }
+        else if (config.directories)
+        {
+            //ent = fts_read(fts);
+            ent = fts_children(fts, 0);
+            if (ent != NULL && (!config.force && !config.unlink))
+            {
+                fprintf(stderr, "%s: %s: Directory not empty\n", progname, path);
+                fts_close(fts);
+                return -1;
+            }
+            fts_close(fts);
+            if (!prompt(progname, "%s directory %s? ",
+                        (config.unlink ? "remove" : "trash"), path))
+            {
+                return 0;
+            }
+            
+            if (config.unlink)
+                err = FSDeleteObject(&fsref);
+            else
+                err = FSMoveObjectToTrashSync(&fsref, NULL, 0);
+            
+            if (err == noErr)
+            {
+                if (config.verbose)
+                    printf("%s %s\n", (config.unlink ? "removed" : "trashed"), path);
+            }
+            else
+            {
+                switch (err)
+                {
+                    case permErr:
+                        fprintf(stderr, "%s: cannot move %s: permission denied\n", progname, path);
+                        break;
+                        
+                    default:
+                        fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                        break;
                 }
             }
         }
     }
-    
-    exit(EXIT_SUCCESS);
+    else
+    {
+        bool move = true;
+        if (config.interactive == INTERACTIVE_ALL)
+        {
+            move = prompt(progname, "remove regular file %s?", path);
+        }
+        
+        if (move)
+        {
+            if (config.unlink)
+                err = FSDeleteObject(&fsref);
+            else
+                err = FSMoveObjectToTrashSync(&fsref, NULL, 0);
+            if (err == noErr)
+            {
+                if (config.verbose)
+                    printf("%s %s\n", (config.unlink ? "removed" : "trashed"), path);
+            }
+            else
+            {
+                switch (err)
+                {
+                    case permErr:
+                        fprintf(stderr, "%s: cannot move %s: permission denied\n", progname, path);
+                        break;
+                        
+                    default:
+                        fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                        break;
+                }
+            }
+        }
+    }
+    return 0;
 }
-
