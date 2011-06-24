@@ -26,3 +26,13 @@ It is not complete yet. You shouldn't use it or replace `/bin/rm` with it quite 
       -v, --verbose             explain what is being done
       -h, --help                show this help and exit
           --version             show version info and exit
+
+Some recipies to remember:
+
+* Move a directory to the trash, even if not empty (also, faster):
+
+        toss -d -f PATH
+
+* Act like `rm`:
+
+        toss -u [options] PATH
