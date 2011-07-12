@@ -261,7 +261,7 @@ int trash(const char *progname, const char * const path)
             return -1;
         }
         
-        char * const path_argv[] = { path, NULL };
+        char * const path_argv[] = { (char * const) path, NULL };
         int options = FTS_PHYSICAL;
         if (config.one_file_system)
             options |= FTS_XDEV;
@@ -313,7 +313,7 @@ int trash(const char *progname, const char * const path)
                                     break;
                                     
                                 default:
-                                    fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                                    fprintf(stderr, "%s: cannot move %s: OSStatus %ld\n", progname, path, err);
                                     break;
                             }
                         }
@@ -365,7 +365,7 @@ int trash(const char *progname, const char * const path)
                         break;
                         
                     default:
-                        fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                        fprintf(stderr, "%s: cannot move %s: OSStatus %ld\n", progname, path, err);
                         break;
                 }
             }
@@ -399,7 +399,7 @@ int trash(const char *progname, const char * const path)
                         break;
                         
                     default:
-                        fprintf(stderr, "%s: cannot move %s: OSStatus %d\n", progname, path, err);
+                        fprintf(stderr, "%s: cannot move %s: OSStatus %ld\n", progname, path, err);
                         break;
                 }
             }
